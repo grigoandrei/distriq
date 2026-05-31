@@ -62,3 +62,12 @@ class Worker(Base):
     @property
     def is_healthy(self) -> bool:
         return (datetime.now(timezone.utc) - self.last_seen_at) < timedelta(seconds=90)
+
+class StateTransition(Base):
+    __tablename__ = "state_transitions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    job_run_id: Mapped[UUID] = mapped_column(ForeignKey("job_runs.id"), nullable=False)
+    from_state: Mapped[Status] = mapped_column(SAEnum(Status), nullable=False)
+    to_state: Mapped[Status] = mapped_column(SAEnum(Status), nullable=False)
+    transitioned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
