@@ -2,7 +2,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Boolean, Integer, DateTime, func, ForeignKey, Text
 from sqlalchemy import Enum as SAEnum
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from enum import Enum
 
 class Status(Enum):
@@ -37,9 +37,9 @@ class Job(Base):
 class JobRun(Base):
     __tablename__ = "job_runs"
 
-    id:  Mapped[UUID] = mapped_column(primary_key=True, nullable=False)
-    job_id: Mapped[UUID] = mapped_column(ForeignKey("jobs.id"), nullable=True)
-    worker_id: Mapped[UUID | None] = mapped_column(ForeignKey("workers.id"), default=uuid4, nullable=True)
+    id:  Mapped[UUID] = mapped_column(primary_key=True, nullable=False, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(ForeignKey("jobs.id"), nullable=False)
+    worker_id: Mapped[UUID | None] = mapped_column(ForeignKey("workers.id"), nullable=True)
     status: Mapped[Status] = mapped_column(SAEnum(Status), nullable=False)
     source: Mapped[Source] = mapped_column(SAEnum(Source), nullable=False)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1)
@@ -50,3 +50,15 @@ class JobRun(Base):
     output: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class Worker(Base):
+    __tablename__ = "workers"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    hostname: Mapped[str] = mapped_column(String(128), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    
+    @property
+    def is_healthy(self) -> bool:
+        return (datetime.now(timezone.utc) - self.last_seen_at) < timedelta(seconds=90)
