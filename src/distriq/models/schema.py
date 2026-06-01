@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from croniter import croniter
 from datetime import datetime
 from uuid import UUID
+from distriq.models.database import Status, Source
 
 class JobCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128, pattern=r"^[a-zA-Z0-9_-]+$")
@@ -41,3 +42,20 @@ class JobResponse(BaseModel):
     next_run_time: datetime | None
     created_at: datetime
     updated_at: datetime
+
+class JobRunResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    job_id: UUID
+    worker_id: UUID | None
+    status: Status
+    source: Source
+    attempt_number: int
+    scheduled_time: datetime
+    enqueued_time: datetime
+    start_time: datetime | None
+    end_time: datetime | None
+    output: str | None
+    error: str | None
+    created_at: datetime
