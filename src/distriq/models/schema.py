@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from croniter import croniter
+from datetime import datetime
+from uuid import UUID
 
 class JobCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128, pattern=r"^[a-zA-Z0-9_-]+$")
@@ -24,3 +26,18 @@ class JobCreate(BaseModel):
         if not croniter.is_valid(v):
             raise ValueError(f"Invalid cron expression: '{v}'")
         return v
+
+class JobResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    command: str
+    cron_expression: str
+    is_active: bool
+    retry_count: int
+    base_delay_seconds: int
+    max_delay_seconds: int
+    next_run_time: datetime | None
+    created_at: datetime
+    updated_at: datetime
