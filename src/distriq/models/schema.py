@@ -68,3 +68,9 @@ class HealthResponse(BaseModel):
     database: str
     healthy_worker_count: int
     total_worker_count: int
+
+class PaginatedResponse(BaseModel):
+    items: list[JobRunResponse]
+    total: int
+    page: int
+    page_size: int
