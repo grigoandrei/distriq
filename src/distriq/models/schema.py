@@ -63,3 +63,8 @@ class JobRunResponse(BaseModel):
 class TriggerResponse(BaseModel):
     id: UUID
     status: Status
+
+class HealthResponse(BaseModel):
+    database: str
+    healthy_worker_count: int
+    total_worker_count: int
