@@ -59,3 +59,7 @@ class JobRunResponse(BaseModel):
     output: str | None
     error: str | None
     created_at: datetime
+
+class TriggerResponse(BaseModel):
+    id: UUID
+    status: Status
