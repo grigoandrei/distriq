@@ -3,3 +3,4 @@
 src/distriq/__pycache__/
 src/distriq/models/__pycache__
 .env
+__pycache__/
