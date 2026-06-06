@@ -6,6 +6,7 @@ from distriq.models.database import Job
 from sqlalchemy import select
 from croniter import croniter
 from datetime import datetime, timezone
+from uuid import UUID
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -35,3 +36,6 @@ async def create_job(job_data: JobCreate, db: AsyncSession = Depends(get_db)):
     await db.refresh(job)
 
     return job
+
+@router.get("", response_model=JobResponse, status_code=200)
+async def get_job(job_id: UUID)
