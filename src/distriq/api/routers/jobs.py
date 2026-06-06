@@ -37,5 +37,15 @@ async def create_job(job_data: JobCreate, db: AsyncSession = Depends(get_db)):
 
     return job
 
-@router.get("", response_model=JobResponse, status_code=200)
-async def get_job(job_id: UUID)
+@router.get("", response_model=list[JobResponse], status_code=200)
+async def get_all_jobs(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Job))
+    return result.scalars().all()
+
+@router.get("/{job_id}", response_model=JobResponse, status_code=200)
+async def get_job(job_id: UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
