@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
-@router.post("/", response_model=JobResponse, status_code=201)
+@router.post("", response_model=JobResponse, status_code=201)
 async def create_job(job_data: JobCreate, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(
         select(Job).where(Job.name == job_data.name)
