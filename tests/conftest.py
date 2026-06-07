@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
@@ -29,11 +30,14 @@ async def client():
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as ac:
-        yield ac
+    # Mock Redis so tests don't depend on a running Redis instance
+    with patch("distriq.api.routers.jobs.redis", new_callable=AsyncMock) as mock_redis:
+        mock_redis.rpush = AsyncMock(return_value=1)
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            yield ac
 
     # Cleanup
     app.dependency_overrides.clear()
