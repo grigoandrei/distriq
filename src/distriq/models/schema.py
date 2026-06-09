@@ -65,11 +65,10 @@ class TriggerResponse(BaseModel):
     status: Status
 
 class HealthResponse(BaseModel):
-    status: Status
+    status: str
     database: str
     healthy_worker_count: int
     total_worker_count: int
-    timestamp: datetime
 
 class PaginatedResponse(BaseModel):
     items: list[JobRunResponse]

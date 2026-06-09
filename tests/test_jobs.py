@@ -209,3 +209,123 @@ async def test_trigger_job_multiple_times(client):
     assert resp1.status_code == 201
     assert resp2.status_code == 201
     assert resp1.json()["id"] != resp2.json()["id"]
+
+
+# --- Observability endpoint tests ---
+
+
+async def test_list_job_runs_empty(client):
+    """GET /jobs/{id}/runs with no runs returns empty paginated response."""
+    create_resp = await client.post("/jobs", json={
+        "name": "no-runs-job",
+        "command": "scripts/hello.py",
+        "cron_expression": "0 * * * *",
+    })
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/jobs/{job_id}/runs")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["items"] == []
+    assert data["total"] == 0
+    assert data["page"] == 1
+    assert data["page_size"] == 20
+
+
+async def test_list_job_runs_with_triggers(client):
+    """GET /jobs/{id}/runs shows triggered runs."""
+    create_resp = await client.post("/jobs", json={
+        "name": "runs-job",
+        "command": "scripts/hello.py",
+        "cron_expression": "0 * * * *",
+    })
+    job_id = create_resp.json()["id"]
+
+    # Trigger 3 runs
+    await client.post(f"/jobs/{job_id}/trigger")
+    await client.post(f"/jobs/{job_id}/trigger")
+    await client.post(f"/jobs/{job_id}/trigger")
+
+    response = await client.get(f"/jobs/{job_id}/runs")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 3
+    assert len(data["items"]) == 3
+    # All should be PENDING and MANUAL
+    for item in data["items"]:
+        assert item["status"] == "PENDING"
+        assert item["source"] == "MANUAL"
+
+
+async def test_list_job_runs_pagination(client):
+    """GET /jobs/{id}/runs respects page_size."""
+    create_resp = await client.post("/jobs", json={
+        "name": "paginated-job",
+        "command": "scripts/hello.py",
+        "cron_expression": "0 * * * *",
+    })
+    job_id = create_resp.json()["id"]
+
+    # Trigger 5 runs
+    for _ in range(5):
+        await client.post(f"/jobs/{job_id}/trigger")
+
+    # Request page_size=2
+    response = await client.get(f"/jobs/{job_id}/runs?page_size=2&page=1")
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert data["total"] == 5
+    assert data["page_size"] == 2
+
+
+async def test_list_job_runs_job_not_found(client):
+    """GET /jobs/{id}/runs with non-existent job returns 404."""
+    response = await client.get("/jobs/00000000-0000-0000-0000-000000000000/runs")
+    assert response.status_code == 404
+
+
+async def test_get_single_run(client):
+    """GET /jobs/{id}/runs/{run_id} returns run details."""
+    create_resp = await client.post("/jobs", json={
+        "name": "single-run-job",
+        "command": "scripts/hello.py",
+        "cron_expression": "0 * * * *",
+    })
+    job_id = create_resp.json()["id"]
+
+    trigger_resp = await client.post(f"/jobs/{job_id}/trigger")
+    run_id = trigger_resp.json()["id"]
+
+    response = await client.get(f"/jobs/{job_id}/runs/{run_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == run_id
+    assert data["job_id"] == job_id
+    assert data["status"] == "PENDING"
+    assert data["source"] == "MANUAL"
+
+
+async def test_get_single_run_not_found(client):
+    """GET /jobs/{id}/runs/{run_id} with bad run_id returns 404."""
+    create_resp = await client.post("/jobs", json={
+        "name": "run-404-job",
+        "command": "scripts/hello.py",
+        "cron_expression": "0 * * * *",
+    })
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/jobs/{job_id}/runs/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404
+
+
+# --- Health endpoint tests ---
+
+
+async def test_health_returns_degraded_no_workers(client):
+    """GET /health returns 503 when no workers are registered."""
+    response = await client.get("/health")
+    assert response.status_code == 503
+    data = response.json()
+    assert data["status"] == "degraded"
+    assert data["database"] == "connected"
+    assert data["healthy_worker_count"] == 0
